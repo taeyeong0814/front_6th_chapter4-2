@@ -4,6 +4,6 @@ import { createRoot } from "react-dom/client";
 
 createRoot(document.getElementById("root")!).render(
   <ChakraProvider>
-    <App/>
+    <App />
   </ChakraProvider>
-)
+);
