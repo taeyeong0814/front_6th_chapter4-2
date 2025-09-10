@@ -124,43 +124,72 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     majors: [],
   });
 
+  const createFilterCache = () => {
+    let lastOptionsKey = "";
+    let cachedResult: Lecture[] = [];
+
+    return (lectures: Lecture[], searchOptions: SearchOption): Lecture[] => {
+      const currentOptionsKey = JSON.stringify(searchOptions);
+
+      if (currentOptionsKey === lastOptionsKey) {
+        console.log("필터링 결과 캐시 사용");
+        return cachedResult;
+      }
+
+      console.log("필터링 수행");
+      const {
+        query = "",
+        credits,
+        grades,
+        days,
+        times,
+        majors,
+      } = searchOptions;
+      cachedResult = lectures
+        .filter(
+          (lecture) =>
+            lecture.title.toLowerCase().includes(query.toLowerCase()) ||
+            lecture.id.toLowerCase().includes(query.toLowerCase())
+        )
+        .filter(
+          (lecture) => grades.length === 0 || grades.includes(lecture.grade)
+        )
+        .filter(
+          (lecture) => majors.length === 0 || majors.includes(lecture.major)
+        )
+        .filter(
+          (lecture) => !credits || lecture.credits.startsWith(String(credits))
+        )
+        .filter((lecture) => {
+          if (days.length === 0) {
+            return true;
+          }
+          const schedules = lecture.schedule
+            ? parseSchedule(lecture.schedule)
+            : [];
+          return schedules.some((s) => days.includes(s.day));
+        })
+        .filter((lecture) => {
+          if (times.length === 0) {
+            return true;
+          }
+          const schedules = lecture.schedule
+            ? parseSchedule(lecture.schedule)
+            : [];
+          return schedules.some((s) =>
+            s.range.some((time) => times.includes(time))
+          );
+        });
+
+      lastOptionsKey = currentOptionsKey;
+      return cachedResult;
+    };
+  };
+
+  const getFilteredLecturesWithCache = createFilterCache();
+
   const getFilteredLectures = () => {
-    const { query = "", credits, grades, days, times, majors } = searchOptions;
-    return lectures
-      .filter(
-        (lecture) =>
-          lecture.title.toLowerCase().includes(query.toLowerCase()) ||
-          lecture.id.toLowerCase().includes(query.toLowerCase())
-      )
-      .filter(
-        (lecture) => grades.length === 0 || grades.includes(lecture.grade)
-      )
-      .filter(
-        (lecture) => majors.length === 0 || majors.includes(lecture.major)
-      )
-      .filter(
-        (lecture) => !credits || lecture.credits.startsWith(String(credits))
-      )
-      .filter((lecture) => {
-        if (days.length === 0) {
-          return true;
-        }
-        const schedules = lecture.schedule
-          ? parseSchedule(lecture.schedule)
-          : [];
-        return schedules.some((s) => days.includes(s.day));
-      })
-      .filter((lecture) => {
-        if (times.length === 0) {
-          return true;
-        }
-        const schedules = lecture.schedule
-          ? parseSchedule(lecture.schedule)
-          : [];
-        return schedules.some((s) =>
-          s.range.some((time) => times.includes(time))
-        );
-      });
+    return getFilteredLecturesWithCache(lectures, searchOptions);
   };
 
   const filteredLectures = getFilteredLectures();
