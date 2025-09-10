@@ -86,21 +86,27 @@ const fetchMajors = () => axios.get<Lecture[]>("/schedules-majors.json");
 const fetchLiberalArts = () =>
   axios.get<Lecture[]>("/schedules-liberal-arts.json");
 
-// 1단계: Promise.all 올바른 병렬 처리로 수정 (중복 호출은 아직 유지)
-const fetchAllLectures = async () => {
-  console.log("🚀 API 호출 시작", performance.now());
+const createApiCache = () => {
+  let cachedLectures: Lecture[] | null = null;
 
-  // await 제거하여 진짜 병렬 처리 구현
-  const results = await Promise.all([
-    (console.log("API Call 1", performance.now()), fetchMajors()),
-    (console.log("API Call 2", performance.now()), fetchLiberalArts()),
-    (console.log("API Call 3", performance.now()), fetchMajors()),
-    (console.log("API Call 4", performance.now()), fetchLiberalArts()),
-    (console.log("API Call 5", performance.now()), fetchMajors()),
-    (console.log("API Call 6", performance.now()), fetchLiberalArts()),
-  ]);
-  return results;
+  return async (): Promise<Lecture[]> => {
+    if (cachedLectures) {
+      console.log("캐시된 데이터 사용");
+      return cachedLectures;
+    }
+
+    console.log("API 호출 시작", performance.now());
+    const results = await Promise.all([fetchMajors(), fetchLiberalArts()]);
+    cachedLectures = results.flatMap((result) => result.data);
+    console.log("API 호출 완료", performance.now());
+    return cachedLectures;
+  };
 };
+
+const getCachedLectures = createApiCache();
+
+// 기존 fetchAllLectures 함수를 간단하게 교체
+const fetchAllLectures = getCachedLectures;
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
@@ -192,11 +198,11 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   useEffect(() => {
     const start = performance.now();
     console.log("API 호출 시작: ", start);
-    fetchAllLectures().then((results) => {
+    fetchAllLectures().then((lectures) => {
       const end = performance.now();
       console.log("모든 API 호출 완료 ", end);
       console.log("API 호출에 걸린 시간(ms): ", end - start);
-      setLectures(results.flatMap((result) => result.data));
+      setLectures(lectures);
     });
   }, []);
 
