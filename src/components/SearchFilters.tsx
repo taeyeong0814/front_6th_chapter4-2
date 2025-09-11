@@ -62,207 +62,329 @@ const TIME_SLOTS = [
   { id: 24, label: "22:35~23:25" },
 ];
 
+// 🔥 최적화: 개별 필드 컴포넌트들로 분리하여 독립적 리렌더링
+const QueryFilter = React.memo(
+  ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+  }) => {
+    console.log("🎯 QueryFilter 렌더링됨:", performance.now());
+
+    const handleChange = useAutoCallback(
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        onChange(e.target.value);
+      }
+    );
+
+    return (
+      <FormControl>
+        <FormLabel>검색어</FormLabel>
+        <Input
+          placeholder="과목명 또는 과목코드"
+          value={value}
+          onChange={handleChange}
+        />
+      </FormControl>
+    );
+  }
+);
+
+const CreditsFilter = React.memo(
+  ({
+    value,
+    onChange,
+  }: {
+    value?: number;
+    onChange: (value?: number) => void;
+  }) => {
+    console.log("🎯 CreditsFilter 렌더링됨:", performance.now());
+
+    const handleChange = useAutoCallback(
+      (e: React.ChangeEvent<HTMLSelectElement>) => {
+        onChange(e.target.value ? Number(e.target.value) : undefined);
+      }
+    );
+
+    return (
+      <FormControl>
+        <FormLabel>학점</FormLabel>
+        <Select placeholder="전체" value={value || ""} onChange={handleChange}>
+          <option value="">전체</option>
+          <option value={1}>1학점</option>
+          <option value={2}>2학점</option>
+          <option value={3}>3학점</option>
+        </Select>
+      </FormControl>
+    );
+  }
+);
+
+const GradesFilter = React.memo(
+  ({
+    value,
+    onChange,
+  }: {
+    value: number[];
+    onChange: (value: number[]) => void;
+  }) => {
+    console.log("🎯 GradesFilter 렌더링됨:", performance.now());
+
+    const handleChange = useAutoCallback((values: (string | number)[]) => {
+      onChange(values.map(Number));
+    });
+
+    return (
+      <FormControl>
+        <FormLabel>학년</FormLabel>
+        <CheckboxGroup
+          colorScheme="green"
+          value={value}
+          onChange={handleChange}
+        >
+          <HStack spacing={4}>
+            {[1, 2, 3, 4].map((grade) => (
+              <Checkbox key={grade} size="sm" value={grade}>
+                {grade}학년
+              </Checkbox>
+            ))}
+          </HStack>
+        </CheckboxGroup>
+      </FormControl>
+    );
+  }
+);
+
+const DaysFilter = React.memo(
+  ({
+    value,
+    onChange,
+  }: {
+    value: string[];
+    onChange: (value: string[]) => void;
+  }) => {
+    console.log("🎯 DaysFilter 렌더링됨:", performance.now());
+
+    const handleChange = useAutoCallback((values: (string | number)[]) => {
+      onChange(values as string[]);
+    });
+
+    return (
+      <FormControl>
+        <FormLabel>요일</FormLabel>
+        <CheckboxGroup
+          colorScheme="green"
+          value={value}
+          onChange={handleChange}
+        >
+          <HStack spacing={4}>
+            {DAY_LABELS.map((day) => (
+              <Checkbox key={day} value={day}>
+                {day}
+              </Checkbox>
+            ))}
+          </HStack>
+        </CheckboxGroup>
+      </FormControl>
+    );
+  }
+);
+
+const TimesFilter = React.memo(
+  ({
+    value,
+    onChange,
+  }: {
+    value: number[];
+    onChange: (value: number[]) => void;
+  }) => {
+    console.log("🎯 TimesFilter 렌더링됨:", performance.now());
+
+    const handleChange = useAutoCallback((values: (string | number)[]) => {
+      onChange(values.map(Number));
+    });
+
+    const handleTimeRemove = useAutoCallback((time: number) => {
+      onChange(value.filter((v) => v !== time));
+    });
+
+    return (
+      <FormControl>
+        <FormLabel>시간</FormLabel>
+        <CheckboxGroup
+          colorScheme="green"
+          value={value}
+          onChange={handleChange}
+        >
+          <Wrap spacing={1} mb={2}>
+            {value
+              .sort((a, b) => a - b)
+              .map((time) => (
+                <Tag key={time} size="sm" variant="outline" colorScheme="blue">
+                  <TagLabel>{time}교시</TagLabel>
+                  <TagCloseButton onClick={() => handleTimeRemove(time)} />
+                </Tag>
+              ))}
+          </Wrap>
+          <Stack
+            spacing={2}
+            overflowY="auto"
+            h="100px"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius={5}
+            p={2}
+          >
+            {TIME_SLOTS.map(({ id, label }) => (
+              <Box key={id}>
+                <Checkbox key={id} size="sm" value={id}>
+                  {id}교시({label})
+                </Checkbox>
+              </Box>
+            ))}
+          </Stack>
+        </CheckboxGroup>
+      </FormControl>
+    );
+  }
+);
+
+const MajorsFilter = React.memo(
+  ({
+    value,
+    allMajors,
+    onChange,
+  }: {
+    value: string[];
+    allMajors: string[];
+    onChange: (value: string[]) => void;
+  }) => {
+    console.log("🎯 MajorsFilter 렌더링됨:", performance.now());
+
+    const handleChange = useAutoCallback((values: (string | number)[]) => {
+      onChange(values as string[]);
+    });
+
+    const handleMajorRemove = useAutoCallback((major: string) => {
+      onChange(value.filter((v) => v !== major));
+    });
+
+    return (
+      <FormControl>
+        <FormLabel>전공</FormLabel>
+        <CheckboxGroup
+          colorScheme="green"
+          value={value}
+          onChange={handleChange}
+        >
+          <Wrap spacing={1} mb={2}>
+            {value.map((major) => (
+              <Tag key={major} size="sm" variant="outline" colorScheme="blue">
+                <TagLabel>{major.split("<p>").pop()}</TagLabel>
+                <TagCloseButton onClick={() => handleMajorRemove(major)} />
+              </Tag>
+            ))}
+          </Wrap>
+          <Stack
+            spacing={2}
+            overflowY="auto"
+            h="100px"
+            border="1px solid"
+            borderColor="gray.200"
+            borderRadius={5}
+            p={2}
+          >
+            {allMajors.map((major) => (
+              <Box key={major}>
+                <Checkbox key={major} size="sm" value={major}>
+                  {major.replace(/<p>/gi, " ")}
+                </Checkbox>
+              </Box>
+            ))}
+          </Stack>
+        </CheckboxGroup>
+      </FormControl>
+    );
+  }
+);
+
+// 🔥 최적화: displayName 추가
+QueryFilter.displayName = "QueryFilter";
+CreditsFilter.displayName = "CreditsFilter";
+GradesFilter.displayName = "GradesFilter";
+DaysFilter.displayName = "DaysFilter";
+TimesFilter.displayName = "TimesFilter";
+MajorsFilter.displayName = "MajorsFilter";
+
 const SearchFilters = React.memo(
   ({ searchOptions, allMajors, onChange }: Props) => {
     console.log("🎯 SearchFilters 렌더링됨:", performance.now());
 
-    const handleQueryChange = useAutoCallback(
-      (e: React.ChangeEvent<HTMLInputElement>) => {
-        onChange("query", e.target.value);
-      }
-    );
-
-    const handleCreditsChange = useAutoCallback(
-      (e: React.ChangeEvent<HTMLSelectElement>) => {
-        onChange(
-          "credits",
-          e.target.value ? Number(e.target.value) : undefined
-        );
-      }
-    );
-
-    const handleGradesChange = useAutoCallback(
-      (values: (string | number)[]) => {
-        onChange("grades", values.map(Number));
-      }
-    );
-
-    const handleDaysChange = useAutoCallback((values: (string | number)[]) => {
-      onChange("days", values as string[]);
+    // 🔥 최적화: 개별 필드별 변경 함수들
+    const handleQueryChange = useAutoCallback((value: string) => {
+      onChange("query", value);
     });
 
-    const handleTimesChange = useAutoCallback((values: (string | number)[]) => {
-      onChange("times", values.map(Number));
+    const handleCreditsChange = useAutoCallback((value?: number) => {
+      onChange("credits", value);
     });
 
-    const handleMajorsChange = useAutoCallback(
-      (values: (string | number)[]) => {
-        onChange("majors", values as string[]);
-      }
-    );
-
-    const handleTimeRemove = useAutoCallback((time: number) => {
-      onChange(
-        "times",
-        searchOptions.times.filter((v) => v !== time)
-      );
+    const handleGradesChange = useAutoCallback((value: number[]) => {
+      onChange("grades", value);
     });
 
-    const handleMajorRemove = useAutoCallback((major: string) => {
-      onChange(
-        "majors",
-        searchOptions.majors.filter((v) => v !== major)
-      );
+    const handleDaysChange = useAutoCallback((value: string[]) => {
+      onChange("days", value);
+    });
+
+    const handleTimesChange = useAutoCallback((value: number[]) => {
+      onChange("times", value);
+    });
+
+    const handleMajorsChange = useAutoCallback((value: string[]) => {
+      onChange("majors", value);
     });
 
     return (
       <>
         <HStack spacing={4}>
-          <FormControl>
-            <FormLabel>검색어</FormLabel>
-            <Input
-              placeholder="과목명 또는 과목코드"
-              value={searchOptions.query}
-              onChange={handleQueryChange}
-            />
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>학점</FormLabel>
-            <Select
-              value={searchOptions.credits}
-              onChange={handleCreditsChange}
-            >
-              <option value="">전체</option>
-              <option value="1">1학점</option>
-              <option value="2">2학점</option>
-              <option value="3">3학점</option>
-            </Select>
-          </FormControl>
+          <QueryFilter
+            value={searchOptions.query || ""}
+            onChange={handleQueryChange}
+          />
+          <CreditsFilter
+            value={searchOptions.credits}
+            onChange={handleCreditsChange}
+          />
         </HStack>
 
         <HStack spacing={4}>
-          <FormControl>
-            <FormLabel>학년</FormLabel>
-            <CheckboxGroup
-              value={searchOptions.grades}
-              onChange={handleGradesChange}
-            >
-              <HStack spacing={4}>
-                {[1, 2, 3, 4].map((grade) => (
-                  <Checkbox key={grade} value={grade}>
-                    {grade}학년
-                  </Checkbox>
-                ))}
-              </HStack>
-            </CheckboxGroup>
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>요일</FormLabel>
-            <CheckboxGroup
-              value={searchOptions.days}
-              onChange={handleDaysChange}
-            >
-              <HStack spacing={4}>
-                {DAY_LABELS.map((day) => (
-                  <Checkbox key={day} value={day}>
-                    {day}
-                  </Checkbox>
-                ))}
-              </HStack>
-            </CheckboxGroup>
-          </FormControl>
+          <GradesFilter
+            value={searchOptions.grades}
+            onChange={handleGradesChange}
+          />
+          <DaysFilter value={searchOptions.days} onChange={handleDaysChange} />
         </HStack>
 
         <HStack spacing={4}>
-          <FormControl>
-            <FormLabel>시간</FormLabel>
-            <CheckboxGroup
-              colorScheme="green"
-              value={searchOptions.times}
-              onChange={handleTimesChange}
-            >
-              <Wrap spacing={1} mb={2}>
-                {searchOptions.times
-                  .sort((a, b) => a - b)
-                  .map((time) => (
-                    <Tag
-                      key={time}
-                      size="sm"
-                      variant="outline"
-                      colorScheme="blue"
-                    >
-                      <TagLabel>{time}교시</TagLabel>
-                      <TagCloseButton onClick={() => handleTimeRemove(time)} />
-                    </Tag>
-                  ))}
-              </Wrap>
-              <Stack
-                spacing={2}
-                overflowY="auto"
-                h="100px"
-                border="1px solid"
-                borderColor="gray.200"
-                borderRadius={5}
-                p={2}
-              >
-                {TIME_SLOTS.map(({ id, label }) => (
-                  <Box key={id}>
-                    <Checkbox key={id} size="sm" value={id}>
-                      {id}교시({label})
-                    </Checkbox>
-                  </Box>
-                ))}
-              </Stack>
-            </CheckboxGroup>
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>전공</FormLabel>
-            <CheckboxGroup
-              colorScheme="green"
-              value={searchOptions.majors}
-              onChange={handleMajorsChange}
-            >
-              <Wrap spacing={1} mb={2}>
-                {searchOptions.majors.map((major) => (
-                  <Tag
-                    key={major}
-                    size="sm"
-                    variant="outline"
-                    colorScheme="blue"
-                  >
-                    <TagLabel>{major.split("<p>").pop()}</TagLabel>
-                    <TagCloseButton onClick={() => handleMajorRemove(major)} />
-                  </Tag>
-                ))}
-              </Wrap>
-              <Stack
-                spacing={2}
-                overflowY="auto"
-                h="100px"
-                border="1px solid"
-                borderColor="gray.200"
-                borderRadius={5}
-                p={2}
-              >
-                {allMajors.map((major) => (
-                  <Box key={major}>
-                    <Checkbox key={major} size="sm" value={major}>
-                      {major.replace(/<p>/gi, " ")}
-                    </Checkbox>
-                  </Box>
-                ))}
-              </Stack>
-            </CheckboxGroup>
-          </FormControl>
+          <TimesFilter
+            value={searchOptions.times}
+            onChange={handleTimesChange}
+          />
+          <MajorsFilter
+            value={searchOptions.majors}
+            allMajors={allMajors}
+            onChange={handleMajorsChange}
+          />
         </HStack>
       </>
     );
   }
 );
 
+// 🔥 최적화: displayName 추가
 SearchFilters.displayName = "SearchFilters";
 
 export default SearchFilters;

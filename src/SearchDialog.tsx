@@ -12,8 +12,7 @@ import {
 } from "@chakra-ui/react";
 import SearchFilters from "./components/SearchFilters.tsx";
 import LectureTable from "./components/LectureTable.tsx";
-import { useScheduleContext } from "./hooks/useScheduleContext.ts";
-import { Lecture } from "./types.ts";
+import { Lecture, Schedule } from "./types.ts";
 import { parseSchedule } from "./utils.ts";
 import axios from "axios";
 
@@ -24,6 +23,7 @@ interface Props {
     time?: number;
   } | null;
   onClose: () => void;
+  onAddSchedule: (tableId: string, schedules: Schedule[]) => void; // 🔥 최적화: 부모를 통해 스케줄 추가
 }
 
 interface SearchOption {
@@ -84,174 +84,293 @@ const fetchAllLectures = async () => {
 };
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
-const SearchDialog = React.memo(({ searchInfo, onClose }: Props) => {
-  console.log("🎯 SearchDialog 렌더링됨:", performance.now());
-  const { setSchedulesMap } = useScheduleContext();
+const SearchDialog = React.memo(
+  ({ searchInfo, onClose, onAddSchedule }: Props) => {
+    console.log("🎯 SearchDialog 렌더링됨:", performance.now());
 
-  const loaderWrapperRef = useRef<HTMLDivElement>(null);
-  const loaderRef = useRef<HTMLDivElement>(null);
-  const [lectures, setLectures] = useState<Lecture[]>([]);
-  const [page, setPage] = useState(1);
-  const [searchOptions, setSearchOptions] = useState<SearchOption>({
-    query: "",
-    grades: [],
-    days: [],
-    times: [],
-    majors: [],
-  });
+    const loaderWrapperRef = useRef<HTMLDivElement>(null);
+    const loaderRef = useRef<HTMLDivElement>(null);
+    const [allLectures, setAllLectures] = useState<Lecture[]>([]); // 🔥 최적화: 전체 강의 데이터
+    const [filteredLectures, setFilteredLectures] = useState<Lecture[]>([]); // 🔥 최적화: 필터링된 강의 데이터
+    const [displayedLectures, setDisplayedLectures] = useState<Lecture[]>([]); // 🔥 최적화: 화면에 표시될 강의들
+    // 🔥 최적화: 개별 필드 상태로 분리하여 불필요한 리렌더링 방지
+    const [query, setQuery] = useState("");
+    const [grades, setGrades] = useState<number[]>([]);
+    const [days, setDays] = useState<string[]>([]);
+    const [times, setTimes] = useState<number[]>([]);
+    const [majors, setMajors] = useState<string[]>([]);
+    const [credits, setCredits] = useState<number | undefined>(undefined);
 
-  // 🔥 최적화: 검색 조건이 변경될 때만 필터링 실행
-  const filteredLectures = useMemo(() => {
-    console.log("🔥 필터링 실행됨 - 검색 조건 변경:", performance.now());
-    const { query = "", credits, grades, days, times, majors } = searchOptions;
-    return lectures
-      .filter(
-        (lecture) =>
-          lecture.title.toLowerCase().includes(query.toLowerCase()) ||
-          lecture.id.toLowerCase().includes(query.toLowerCase())
-      )
-      .filter(
-        (lecture) => grades.length === 0 || grades.includes(lecture.grade)
-      )
-      .filter(
-        (lecture) => majors.length === 0 || majors.includes(lecture.major)
-      )
-      .filter(
-        (lecture) => !credits || lecture.credits.startsWith(String(credits))
-      )
-      .filter((lecture) => {
-        if (days.length === 0) {
-          return true;
-        }
-        const schedules = lecture.schedule
-          ? parseSchedule(lecture.schedule)
-          : [];
-        return schedules.some((s) => days.includes(s.day));
-      })
-      .filter((lecture) => {
-        if (times.length === 0) {
-          return true;
-        }
-        const schedules = lecture.schedule
-          ? parseSchedule(lecture.schedule)
-          : [];
-        return schedules.some((s) =>
-          s.range.some((time) => times.includes(time))
-        );
-      });
-  }, [lectures, searchOptions]);
-
-  // 🔥 최적화: 페이지네이션 계산 메모이제이션
-  const lastPage = useMemo(() => {
-    console.log("🔥 lastPage 계산됨:", performance.now());
-    return Math.ceil(filteredLectures.length / PAGE_SIZE);
-  }, [filteredLectures.length]);
-
-  // 🔥 최적화: 보여질 강의 목록 메모이제이션
-  const visibleLectures = useMemo(() => {
-    console.log("🔥 visibleLectures 계산됨:", performance.now());
-    return filteredLectures.slice(0, page * PAGE_SIZE);
-  }, [filteredLectures, page]);
-
-  // 🔥 최적화: 전공 목록 메모이제이션
-  const allMajors = useMemo(() => {
-    console.log("🔥 allMajors 계산됨:", performance.now());
-    return [...new Set(lectures.map((lecture) => lecture.major))];
-  }, [lectures]);
-
-  const changeSearchOption = useAutoCallback(
-    (field: keyof SearchOption, value: SearchOption[typeof field]) => {
-      setPage(1);
-      setSearchOptions({ ...searchOptions, [field]: value });
-      loaderWrapperRef.current?.scrollTo(0, 0);
-    }
-  );
-
-  const addSchedule = useAutoCallback((lecture: Lecture) => {
-    if (!searchInfo) return;
-
-    const { tableId } = searchInfo;
-
-    const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
-      ...schedule,
-      lecture,
-    }));
-
-    setSchedulesMap((prev) => ({
-      ...prev,
-      [tableId]: [...prev[tableId], ...schedules],
-    }));
-
-    onClose();
-  });
-
-  useEffect(() => {
-    fetchAllLectures()
-      .then((results) => {
-        setLectures(results.flatMap((result) => result?.data || []));
-      })
-      .catch((error) => {
-        console.error("API 호출 실패:", error);
-      });
-  }, []);
-
-  useEffect(() => {
-    const $loader = loaderRef.current;
-    const $loaderWrapper = loaderWrapperRef.current;
-
-    if (!$loader || !$loaderWrapper) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setPage((prevPage) => Math.min(lastPage, prevPage + 1));
-        }
-      },
-      { threshold: 0, root: $loaderWrapper }
+    // 🔥 최적화: searchOptions를 메모이제이션된 객체로 관리
+    const searchOptions = useMemo(
+      () => ({
+        query,
+        grades,
+        days,
+        times,
+        majors,
+        credits,
+      }),
+      [query, grades, days, times, majors, credits]
     );
 
-    observer.observe($loader);
+    // 🔥 최적화: 검색 조건 변경 시 필터링 실행 및 첫 페이지만 표시
+    useEffect(() => {
+      if (allLectures.length === 0) return;
 
-    return () => observer.unobserve($loader);
-  }, [lastPage]);
+      console.log(
+        "🔥 필터링 실행됨 - 전체 강의 수:",
+        allLectures.length,
+        "검색 조건:",
+        searchOptions
+      );
+      const {
+        query = "",
+        credits,
+        grades,
+        days,
+        times,
+        majors,
+      } = searchOptions;
 
-  useEffect(() => {
-    setSearchOptions((prev) => ({
-      ...prev,
-      days: searchInfo?.day ? [searchInfo.day] : [],
-      times: searchInfo?.time ? [searchInfo.time] : [],
-    }));
-    setPage(1);
-  }, [searchInfo]);
+      const filtered = allLectures
+        .filter(
+          (lecture) =>
+            lecture.title.toLowerCase().includes(query.toLowerCase()) ||
+            lecture.id.toLowerCase().includes(query.toLowerCase())
+        )
+        .filter(
+          (lecture) => grades.length === 0 || grades.includes(lecture.grade)
+        )
+        .filter(
+          (lecture) => majors.length === 0 || majors.includes(lecture.major)
+        )
+        .filter(
+          (lecture) => !credits || lecture.credits.startsWith(String(credits))
+        )
+        .filter((lecture) => {
+          if (days.length === 0) {
+            return true;
+          }
+          const schedules = lecture.schedule
+            ? parseSchedule(lecture.schedule)
+            : [];
+          return schedules.some((s) => days.includes(s.day));
+        })
+        .filter((lecture) => {
+          if (times.length === 0) {
+            return true;
+          }
+          const schedules = lecture.schedule
+            ? parseSchedule(lecture.schedule)
+            : [];
+          return schedules.some((s) =>
+            s.range.some((time) => times.includes(time))
+          );
+        });
 
-  return (
-    <Modal isOpen={Boolean(searchInfo)} onClose={onClose} size="6xl">
-      <ModalOverlay />
-      <ModalContent maxW="90vw" w="1000px">
-        <ModalHeader>수업 검색</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <VStack spacing={4} align="stretch">
-            <SearchFilters
-              searchOptions={searchOptions}
-              allMajors={allMajors}
-              onChange={changeSearchOption}
-            />
-            <Text align="right">검색결과: {filteredLectures.length}개</Text>
-            <LectureTable
-              lectures={visibleLectures}
-              onAddSchedule={addSchedule}
-              loaderWrapperRef={loaderWrapperRef}
-              loaderRef={loaderRef}
-            />
-          </VStack>
-        </ModalBody>
-      </ModalContent>
-    </Modal>
-  );
-});
+      // 🔥 최적화: 필터링된 결과 저장 및 첫 페이지만 표시
+      setFilteredLectures(filtered);
+      setDisplayedLectures(filtered.slice(0, PAGE_SIZE));
+    }, [allLectures, searchOptions]);
+
+    // 🔥 최적화: 전공 목록 메모이제이션
+    const allMajors = useMemo(() => {
+      const majors = [...new Set(allLectures.map((lecture) => lecture.major))];
+      console.log("🔥 allMajors 계산됨 - 전공 수:", majors.length);
+      return majors;
+    }, [allLectures]);
+
+    // 🔥 최적화: 개별 필드별 변경 함수들로 분리
+    const changeSearchOption = useAutoCallback(
+      (field: keyof SearchOption, value: SearchOption[typeof field]) => {
+        // 🔥 최적화: 필드별로 개별 상태 업데이트
+        switch (field) {
+          case "query":
+            setQuery(value as string);
+            break;
+          case "grades":
+            setGrades(value as number[]);
+            break;
+          case "days":
+            setDays(value as string[]);
+            break;
+          case "times":
+            setTimes(value as number[]);
+            break;
+          case "majors":
+            setMajors(value as string[]);
+            break;
+          case "credits":
+            setCredits(value as number | undefined);
+            break;
+        }
+
+        loaderWrapperRef.current?.scrollTo(0, 0);
+      }
+    );
+
+    const addSchedule = useAutoCallback((lecture: Lecture) => {
+      if (!searchInfo) return;
+
+      const { tableId } = searchInfo;
+
+      const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
+        ...schedule,
+        lecture,
+      }));
+
+      // 🔥 최적화: 부모 컴포넌트를 통해 스케줄 추가 (Context 직접 조작 방지)
+      onAddSchedule(tableId, schedules);
+
+      onClose();
+    });
+
+    useEffect(() => {
+      console.log("🎯 SearchDialog - API 호출 시작");
+      fetchAllLectures()
+        .then((results) => {
+          const lectures = results.flatMap((result) => result?.data || []);
+          console.log(
+            "🎯 SearchDialog - API 호출 완료, 강의 수:",
+            lectures.length
+          );
+          setAllLectures(lectures);
+          setFilteredLectures(lectures);
+          // 🔥 최적화: 첫 페이지 데이터만 표시
+          setDisplayedLectures(lectures.slice(0, PAGE_SIZE));
+        })
+        .catch((error) => {
+          console.error("🎯 SearchDialog - API 호출 실패:", error);
+        });
+    }, []);
+
+    useEffect(() => {
+      const $loader = loaderRef.current;
+      const $loaderWrapper = loaderWrapperRef.current;
+
+      if (!$loader || !$loaderWrapper) {
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          console.log(
+            "🎯 IntersectionObserver 트리거됨:",
+            entries[0].isIntersecting
+          );
+          if (entries[0].isIntersecting) {
+            console.log("🎯 로더가 화면에 보임 - 무한 스크롤 시작");
+            // 🔥 최적화: 기존 데이터는 리렌더링하지 않고 새로운 데이터만 추가
+            setDisplayedLectures((prevDisplayed) => {
+              const currentLength = prevDisplayed.length;
+              const nextBatch = filteredLectures.slice(
+                currentLength,
+                currentLength + PAGE_SIZE
+              );
+
+              console.log(
+                `🎯 무한 스크롤 상태 - 현재: ${currentLength}개, 필터된 총: ${filteredLectures.length}개, 다음 배치: ${nextBatch.length}개`
+              );
+
+              if (nextBatch.length === 0) {
+                console.log("🎯 무한 스크롤 - 더 이상 로드할 데이터 없음");
+                return prevDisplayed;
+              }
+
+              console.log(
+                `🎯 무한 스크롤 - 새로운 데이터 추가: ${
+                  nextBatch.length
+                }개 (총: ${currentLength + nextBatch.length}개)`
+              );
+              return [...prevDisplayed, ...nextBatch];
+            });
+          }
+        },
+        { threshold: 0, root: $loaderWrapper }
+      );
+
+      observer.observe($loader);
+
+      return () => {
+        observer.unobserve($loader);
+        observer.disconnect(); // 🔥 최적화: observer 완전 정리
+      };
+    }, [filteredLectures]); // 🔥 최적화: filteredLectures 사용
+
+    useEffect(() => {
+      if (searchInfo) {
+        // 🔥 최적화: Dialog가 열릴 때 다른 필드들은 리셋하고 선택된 요일/시간만 설정
+        setQuery("");
+        setGrades([]);
+        setMajors([]);
+        setCredits(undefined);
+
+        // 선택된 요일/시간만 설정
+        if (searchInfo.day) {
+          setDays([searchInfo.day]);
+        } else {
+          setDays([]);
+        }
+
+        if (searchInfo.time) {
+          setTimes([searchInfo.time]);
+        } else {
+          setTimes([]);
+        }
+
+        // 🔥 최적화: lectures는 초기화하지 않음 (API 데이터 유지)
+      }
+    }, [searchInfo]);
+
+    // 🔥 최적화: Dialog 닫힐 때 검색 조건만 리셋 (API 데이터 유지)
+    const handleClose = useAutoCallback(() => {
+      // 모든 검색 조건 리셋
+      setQuery("");
+      setGrades([]);
+      setDays([]);
+      setTimes([]);
+      setMajors([]);
+      setCredits(undefined);
+
+      // 🔥 최적화: displayedLectures 초기화
+      setFilteredLectures([]);
+      setDisplayedLectures([]);
+
+      // 스크롤 위치 리셋
+      loaderWrapperRef.current?.scrollTo(0, 0);
+
+      // Dialog 닫기
+      onClose();
+    });
+
+    return (
+      <Modal isOpen={Boolean(searchInfo)} onClose={handleClose} size="6xl">
+        <ModalOverlay />
+        <ModalContent maxW="90vw" w="1000px">
+          <ModalHeader>수업 검색</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4} align="stretch">
+              <SearchFilters
+                searchOptions={searchOptions}
+                allMajors={allMajors}
+                onChange={changeSearchOption}
+              />
+              <Text align="right">검색결과: {filteredLectures.length}개</Text>
+              <LectureTable
+                lectures={displayedLectures}
+                onAddSchedule={addSchedule}
+                loaderWrapperRef={loaderWrapperRef}
+                loaderRef={loaderRef}
+              />
+            </VStack>
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    );
+  }
+);
 
 SearchDialog.displayName = "SearchDialog";
 

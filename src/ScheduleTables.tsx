@@ -5,9 +5,11 @@ import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 import ScheduleTableWrapper from "./components/ScheduleTableWrapper.tsx";
 import dummyScheduleMap from "./dummyScheduleMap.ts";
 import { Schedule } from "./types.ts";
+import { useScheduleContext } from "./hooks/useScheduleContext.ts";
 
 export const ScheduleTables = React.memo(() => {
   console.log("🎯 ScheduleTables 렌더링됨:", performance.now());
+  const { addSchedule } = useScheduleContext(); // 🔥 최적화: Context에서 addSchedule 가져오기
   const [searchInfo, setSearchInfo] = useState<{
     tableId: string;
     day?: string;
@@ -88,6 +90,30 @@ export const ScheduleTables = React.memo(() => {
     setSearchInfo(null);
   });
 
+  // 🔥 최적화: SearchDialog를 통한 스케줄 추가 처리
+  const handleAddSchedule = useAutoCallback(
+    (tableId: string, schedules: Schedule[]) => {
+      console.log(
+        `🎯 ScheduleTables - 스케줄 추가: ${tableId}`,
+        performance.now()
+      );
+      // Context를 통해 스케줄 추가
+      schedules.forEach((schedule) => {
+        addSchedule(tableId, schedule);
+      });
+    }
+  );
+
+  // 🔥 최적화: cloneData 계산을 메모이제이션
+  const getCloneData = useAutoCallback((tableId: string) => {
+    return (
+      cloneDataMap[tableId] ||
+      (!cloneSourceMap[tableId]
+        ? dummyScheduleMap[tableId as keyof typeof dummyScheduleMap]
+        : undefined)
+    );
+  });
+
   return (
     <>
       <Flex w="full" gap={6} p={6} flexWrap="wrap">
@@ -98,12 +124,7 @@ export const ScheduleTables = React.memo(() => {
             index={index}
             disabledRemoveButton={disabledRemoveButton}
             sourceTableId={cloneSourceMap[tableId]} // 🔥 최적화: 복제 원본 ID 전달
-            cloneData={
-              cloneDataMap[tableId] ||
-              (!cloneSourceMap[tableId]
-                ? dummyScheduleMap[tableId as keyof typeof dummyScheduleMap]
-                : undefined)
-            } // 🔥 최적화: 복제된 시간표 또는 원본 시간표의 실제 데이터 전달
+            cloneData={getCloneData(tableId)} // 🔥 최적화: 복제된 시간표 또는 원본 시간표의 실제 데이터 전달
             onScheduleTimeClick={handleScheduleTimeClick}
             onDuplicate={duplicate}
             onRemove={remove}
@@ -112,7 +133,11 @@ export const ScheduleTables = React.memo(() => {
           />
         ))}
       </Flex>
-      <SearchDialog searchInfo={searchInfo} onClose={handleSearchInfoClose} />
+      <SearchDialog
+        searchInfo={searchInfo}
+        onClose={handleSearchInfoClose}
+        onAddSchedule={handleAddSchedule}
+      />
     </>
   );
 });

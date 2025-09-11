@@ -12,7 +12,10 @@ interface Props {
 
 const LectureTable = React.memo(
   ({ lectures, onAddSchedule, loaderWrapperRef, loaderRef }: Props) => {
-    console.log("🎯 LectureTable 렌더링됨:", performance.now());
+    console.log(
+      `🎯 LectureTable 렌더링됨 - 강의 수: ${lectures.length}`,
+      performance.now()
+    );
 
     return (
       <Box>
