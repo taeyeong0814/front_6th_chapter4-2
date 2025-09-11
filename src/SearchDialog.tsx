@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 import {
   Box,
@@ -131,6 +131,7 @@ const fetchAllLectures = async () => {
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = ({ searchInfo, onClose }: Props) => {
+  console.log("🎯 SearchDialog 렌더링됨:", performance.now());
   const { setSchedulesMap } = useScheduleContext();
 
   const loaderWrapperRef = useRef<HTMLDivElement>(null);
@@ -145,7 +146,9 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     majors: [],
   });
 
-  const getFilteredLectures = () => {
+  // 🔥 최적화: 검색 조건이 변경될 때만 필터링 실행
+  const filteredLectures = useMemo(() => {
+    console.log("🔥 필터링 실행됨 - 검색 조건 변경:", performance.now());
     const { query = "", credits, grades, days, times, majors } = searchOptions;
     return lectures
       .filter(
@@ -182,12 +185,25 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
           s.range.some((time) => times.includes(time))
         );
       });
-  };
+  }, [lectures, searchOptions]);
 
-  const filteredLectures = getFilteredLectures();
-  const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
-  const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
-  const allMajors = [...new Set(lectures.map((lecture) => lecture.major))];
+  // 🔥 최적화: 페이지네이션 계산 메모이제이션
+  const lastPage = useMemo(() => {
+    console.log("🔥 lastPage 계산됨:", performance.now());
+    return Math.ceil(filteredLectures.length / PAGE_SIZE);
+  }, [filteredLectures.length]);
+
+  // 🔥 최적화: 보여질 강의 목록 메모이제이션
+  const visibleLectures = useMemo(() => {
+    console.log("🔥 visibleLectures 계산됨:", performance.now());
+    return filteredLectures.slice(0, page * PAGE_SIZE);
+  }, [filteredLectures, page]);
+
+  // 🔥 최적화: 전공 목록 메모이제이션
+  const allMajors = useMemo(() => {
+    console.log("🔥 allMajors 계산됨:", performance.now());
+    return [...new Set(lectures.map((lecture) => lecture.major))];
+  }, [lectures]);
 
   const changeSearchOption = useAutoCallback(
     (field: keyof SearchOption, value: SearchOption[typeof field]) => {
