@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 import {
   Modal,
@@ -84,7 +84,7 @@ const fetchAllLectures = async () => {
 };
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
-const SearchDialog = ({ searchInfo, onClose }: Props) => {
+const SearchDialog = React.memo(({ searchInfo, onClose }: Props) => {
   console.log("🎯 SearchDialog 렌더링됨:", performance.now());
   const { setSchedulesMap } = useScheduleContext();
 
@@ -251,6 +251,8 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
       </ModalContent>
     </Modal>
   );
-};
+});
+
+SearchDialog.displayName = "SearchDialog";
 
 export default SearchDialog;

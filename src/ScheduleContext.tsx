@@ -17,7 +17,7 @@ export const ScheduleProvider = ({ children }: PropsWithChildren) => {
       );
       return schedulesMap[tableId] || [];
     },
-    [schedulesMap]
+    [schedulesMap] // schedulesMap 의존성 복원
   );
 
   // 🔥 최적화: 스케줄 추가 함수
