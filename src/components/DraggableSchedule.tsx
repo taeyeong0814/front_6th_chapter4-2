@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Button,
@@ -10,7 +10,7 @@ import {
   PopoverTrigger,
   Text,
 } from "@chakra-ui/react";
-import { useDraggable } from "@dnd-kit/core";
+import { useDraggable, useDndContext } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Schedule } from "../types.ts";
 import { CellSize, DAY_LABELS } from "../constants.ts";
@@ -28,6 +28,7 @@ const DraggableSchedule = React.memo(
     console.log(`🎯 DraggableSchedule 렌더링됨: ${id}`, performance.now());
 
     const { day, range, room, lecture } = data;
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false); // 🔥 최적화: 팝업 상태 관리
     const { attributes, setNodeRef, listeners, transform } = useDraggable({
       id,
     });
@@ -52,13 +53,32 @@ const DraggableSchedule = React.memo(
       [leftIndex, topIndex, size]
     );
 
+    // 🔥 최적화: 드래그 상태 감지로 팝업 렌더링 최적화
+    const dndContext = useDndContext();
+    const isCurrentlyDragging = dndContext.active?.id === id && transform;
+
+    // 🔥 최적화: 팝업 열기/닫기 핸들러
+    const handlePopoverOpen = useAutoCallback(() => {
+      setIsPopoverOpen(true);
+    });
+
+    const handlePopoverClose = useAutoCallback(() => {
+      setIsPopoverOpen(false);
+    });
+
     // 🔥 최적화: 이벤트 핸들러를 useAutoCallback으로 최적화
     const handlePopoverClick = useAutoCallback((event: React.MouseEvent) => {
       event.stopPropagation();
     });
 
     return (
-      <Popover>
+      <Popover
+        isOpen={isPopoverOpen}
+        onOpen={handlePopoverOpen}
+        onClose={handlePopoverClose}
+        closeOnBlur={!isCurrentlyDragging} // 🔥 최적화: 드래그 중에는 blur로 닫히지 않음
+        closeOnEsc={!isCurrentlyDragging} // 🔥 최적화: 드래그 중에는 ESC로 닫히지 않음
+      >
         <PopoverTrigger>
           <Box
             position="absolute"
@@ -81,16 +101,26 @@ const DraggableSchedule = React.memo(
             <Text fontSize="xs">{room}</Text>
           </Box>
         </PopoverTrigger>
-        <PopoverContent onClick={handlePopoverClick}>
-          <PopoverArrow />
-          <PopoverCloseButton />
-          <PopoverBody>
-            <Text>강의를 삭제하시겠습니까?</Text>
-            <Button colorScheme="red" size="xs" onClick={onDeleteButtonClick}>
-              삭제
-            </Button>
-          </PopoverBody>
-        </PopoverContent>
+        {/* 🔥 최적화: 팝업이 열린 상태에서만 렌더링 (드래그 중에도 함께 움직임) */}
+        {isPopoverOpen && (
+          <PopoverContent
+            onClick={handlePopoverClick}
+            transform={
+              isCurrentlyDragging
+                ? CSS.Translate.toString(transform)
+                : undefined
+            } // 🔥 최적화: 드래그 중 팝업도 함께 움직임
+          >
+            <PopoverArrow />
+            <PopoverCloseButton />
+            <PopoverBody>
+              <Text>강의를 삭제하시겠습니까?</Text>
+              <Button colorScheme="red" size="xs" onClick={onDeleteButtonClick}>
+                삭제
+              </Button>
+            </PopoverBody>
+          </PopoverContent>
+        )}
       </Popover>
     );
   }

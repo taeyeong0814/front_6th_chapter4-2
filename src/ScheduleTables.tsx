@@ -98,7 +98,12 @@ export const ScheduleTables = React.memo(() => {
             index={index}
             disabledRemoveButton={disabledRemoveButton}
             sourceTableId={cloneSourceMap[tableId]} // 🔥 최적화: 복제 원본 ID 전달
-            cloneData={cloneDataMap[tableId]} // 🔥 최적화: 복제된 시간표의 실제 데이터 전달
+            cloneData={
+              cloneDataMap[tableId] ||
+              (!cloneSourceMap[tableId]
+                ? dummyScheduleMap[tableId as keyof typeof dummyScheduleMap]
+                : undefined)
+            } // 🔥 최적화: 복제된 시간표 또는 원본 시간표의 실제 데이터 전달
             onScheduleTimeClick={handleScheduleTimeClick}
             onDuplicate={duplicate}
             onRemove={remove}

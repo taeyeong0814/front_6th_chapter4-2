@@ -1,6 +1,5 @@
 import { Box } from "@chakra-ui/react";
 import { Schedule } from "./types.ts";
-import { useDndContext } from "@dnd-kit/core";
 import React, { useMemo, useCallback } from "react";
 import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 import ScheduleTableHeader from "./components/ScheduleTableHeader.tsx";
@@ -47,16 +46,15 @@ const ScheduleTable = React.memo(
       [colorMap]
     );
 
-    const dndContext = useDndContext();
-
-    // 🔥 최적화: getActiveTableId를 useMemo로 메모이제이션
-    const activeTableId = useMemo(() => {
-      const activeId = dndContext.active?.id;
-      if (activeId) {
-        return String(activeId).split(":")[0];
-      }
-      return null;
-    }, [dndContext.active?.id]);
+    // 🔥 최적화: useDndContext 제거로 드래그 시 다른 테이블 리렌더링 방지
+    // const dndContext = useDndContext();
+    // const activeTableId = useMemo(() => {
+    //   const activeId = dndContext.active?.id;
+    //   if (activeId) {
+    //     return String(activeId).split(":")[0];
+    //   }
+    //   return null;
+    // }, [dndContext.active?.id]);
 
     // 🔥 최적화: 이벤트 핸들러를 useAutoCallback으로 최적화
     const handleScheduleTimeClick = useAutoCallback(
@@ -72,11 +70,7 @@ const ScheduleTable = React.memo(
     );
 
     return (
-      <Box
-        position="relative"
-        outline={activeTableId === tableId ? "5px dashed" : undefined}
-        outlineColor="blue.300"
-      >
+      <Box position="relative">
         {/* 🔥 최적화: 헤더는 한 번만 렌더링 */}
         <ScheduleTableHeader onScheduleTimeClick={handleScheduleTimeClick} />
 

@@ -1,10 +1,54 @@
 import React from "react";
 import { Button, ButtonGroup, Flex, Heading, Stack } from "@chakra-ui/react";
+import {
+  DndContext,
+  Modifier,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import ScheduleTable from "../ScheduleTable.tsx";
 import { useAutoCallback } from "../hooks/useAutoCallback.ts";
-import { useScheduleContext } from "../hooks/useScheduleContext.ts";
 import { useIndividualScheduleTable } from "../hooks/useIndividualScheduleTable.ts";
 import { Schedule } from "../types.ts";
+import { CellSize } from "../constants.ts";
+
+// 🔥 최적화: 드래그 영역 처리를 위한 SnapModifier
+function createSnapModifier(): Modifier {
+  return ({ transform, containerNodeRect, draggingNodeRect }) => {
+    const containerTop = containerNodeRect?.top ?? 0;
+    const containerLeft = containerNodeRect?.left ?? 0;
+    const containerBottom = containerNodeRect?.bottom ?? 0;
+    const containerRight = containerNodeRect?.right ?? 0;
+
+    const { top = 0, left = 0, bottom = 0, right = 0 } = draggingNodeRect ?? {};
+
+    const minX = containerLeft - left + 120 + 1;
+    const minY = containerTop - top + 40 + 1;
+    const maxX = containerRight - right;
+    const maxY = containerBottom - bottom;
+
+    return {
+      ...transform,
+      x: Math.min(
+        Math.max(
+          Math.round(transform.x / CellSize.WIDTH) * CellSize.WIDTH,
+          minX
+        ),
+        maxX
+      ),
+      y: Math.min(
+        Math.max(
+          Math.round(transform.y / CellSize.HEIGHT) * CellSize.HEIGHT,
+          minY
+        ),
+        maxY
+      ),
+    };
+  };
+}
+
+const modifiers = [createSnapModifier()];
 
 interface Props {
   tableId: string;
@@ -41,21 +85,28 @@ const ScheduleTableWrapper = React.memo(
     // 🔥 최적화: 복제된 시간표는 렌더링 과정을 스킵하고 바로 보여지도록
     const isClonedTable = sourceTableId !== undefined;
 
-    // 🔥 최적화: 개별 테이블별로 독립적인 상태 관리
-    const { schedulesMap } = useScheduleContext();
-    // 🔥 최적화: 복제된 시간표는 실제 데이터를 초기값으로 사용
-    const initialSchedules =
-      cloneData ||
-      (sourceTableId
-        ? schedulesMap[sourceTableId] || []
-        : schedulesMap[tableId] || []);
+    // 🔥 최적화: 완전한 상태 분리 - useScheduleContext 제거
+    // 복제된 시간표는 cloneData를 직접 사용, 원본은 빈 배열로 시작
+    const initialSchedules = cloneData || [];
 
     // 🔥 최적화: 모든 경우에 useIndividualScheduleTable 호출 (Hook 규칙 준수)
-    const { schedules: hookSchedules, removeSchedule } =
-      useIndividualScheduleTable(tableId, initialSchedules);
+    const {
+      schedules: hookSchedules,
+      removeSchedule,
+      handleDragEnd,
+    } = useIndividualScheduleTable(tableId, initialSchedules);
 
     // 🔥 최적화: 복제된 시간표는 렌더링 과정 없이 바로 데이터 사용
     const schedules = isClonedTable ? initialSchedules : hookSchedules;
+
+    // 🔥 최적화: 개별 시간표용 DndContext 센서 설정
+    const sensors = useSensors(
+      useSensor(PointerSensor, {
+        activationConstraint: {
+          distance: 8,
+        },
+      })
+    );
 
     // 🔥 최적화: 복제된 시간표의 데이터 전달 제거 - 독립적인 상태 관리
 
@@ -162,13 +213,19 @@ const ScheduleTableWrapper = React.memo(
             </Button>
           </ButtonGroup>
         </Flex>
-        <ScheduleTable
-          key={`schedule-table-${index}`}
-          schedules={schedules}
-          tableId={tableId}
-          onScheduleTimeClick={handleScheduleTimeClick}
-          onDeleteButtonClick={handleDeleteButtonClick}
-        />
+        <DndContext
+          sensors={sensors}
+          onDragEnd={handleDragEnd}
+          modifiers={modifiers}
+        >
+          <ScheduleTable
+            key={`schedule-table-${index}`}
+            schedules={schedules}
+            tableId={tableId}
+            onScheduleTimeClick={handleScheduleTimeClick}
+            onDeleteButtonClick={handleDeleteButtonClick}
+          />
+        </DndContext>
       </Stack>
     );
   }
