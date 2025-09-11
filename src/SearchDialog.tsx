@@ -12,7 +12,7 @@ import {
 } from "@chakra-ui/react";
 import SearchFilters from "./components/SearchFilters.tsx";
 import LectureTable from "./components/LectureTable.tsx";
-import { useScheduleContext } from "./ScheduleContext.tsx";
+import { useScheduleContext } from "./hooks/useScheduleContext.ts";
 import { Lecture } from "./types.ts";
 import { parseSchedule } from "./utils.ts";
 import axios from "axios";
