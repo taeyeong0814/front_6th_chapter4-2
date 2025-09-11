@@ -9,8 +9,6 @@ interface Props {
 }
 
 const LectureRow = React.memo(({ lecture, onAddSchedule }: Props) => {
-  console.log(`🎯 LectureRow 렌더링됨: ${lecture.id}`, performance.now());
-
   const handleAdd = useAutoCallback(() => {
     onAddSchedule(lecture);
   });

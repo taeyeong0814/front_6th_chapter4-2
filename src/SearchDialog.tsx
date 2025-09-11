@@ -56,17 +56,14 @@ const createApiCache = () => {
 
   return async (key: string, fetcher: () => Promise<{ data: Lecture[] }>) => {
     if (cache.has(key)) {
-      console.log(`캐시에서 반환: ${key}`);
       return cache.get(key);
     }
 
-    console.log(`API 호출 시작: ${key}`, performance.now());
     const promise = fetcher();
     cache.set(key, promise);
 
     try {
       const result = await promise;
-      console.log(`API 호출 완료: ${key}`, performance.now());
       return result;
     } catch (error) {
       cache.delete(key); // 에러 시 캐시에서 제거
@@ -95,8 +92,6 @@ const fetchAllLectures = async () => {
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
 const SearchDialog = React.memo(
   ({ searchInfo, onClose, onAddSchedule }: Props) => {
-    console.log("🎯 SearchDialog 렌더링됨:", performance.now());
-
     const loaderWrapperRef = useRef<HTMLDivElement>(null);
     const loaderRef = useRef<HTMLDivElement>(null);
     const [allLectures, setAllLectures] = useState<Lecture[]>([]); // 🔥 최적화: 전체 강의 데이터
@@ -127,12 +122,6 @@ const SearchDialog = React.memo(
     useEffect(() => {
       if (allLectures.length === 0) return;
 
-      console.log(
-        "🔥 필터링 실행됨 - 전체 강의 수:",
-        allLectures.length,
-        "검색 조건:",
-        searchOptions
-      );
       const {
         query = "",
         credits,
@@ -186,7 +175,6 @@ const SearchDialog = React.memo(
     // 🔥 최적화: 전공 목록 메모이제이션
     const allMajors = useMemo(() => {
       const majors = [...new Set(allLectures.map((lecture) => lecture.major))];
-      console.log("🔥 allMajors 계산됨 - 전공 수:", majors.length);
       return majors;
     }, [allLectures]);
 
@@ -236,21 +224,16 @@ const SearchDialog = React.memo(
     });
 
     useEffect(() => {
-      console.log("🎯 SearchDialog - API 호출 시작");
       fetchAllLectures()
         .then((results) => {
           const lectures = results.flatMap((result) => result?.data || []);
-          console.log(
-            "🎯 SearchDialog - API 호출 완료, 강의 수:",
-            lectures.length
-          );
           setAllLectures(lectures);
           setFilteredLectures(lectures);
           // 🔥 최적화: 첫 페이지 데이터만 표시
           setDisplayedLectures(lectures.slice(0, PAGE_SIZE));
         })
         .catch((error) => {
-          console.error("🎯 SearchDialog - API 호출 실패:", error);
+          console.error(error);
         });
     }, []);
 
@@ -264,12 +247,7 @@ const SearchDialog = React.memo(
 
       const observer = new IntersectionObserver(
         (entries) => {
-          console.log(
-            "🎯 IntersectionObserver 트리거됨:",
-            entries[0].isIntersecting
-          );
           if (entries[0].isIntersecting) {
-            console.log("🎯 로더가 화면에 보임 - 무한 스크롤 시작");
             // 🔥 최적화: 기존 데이터는 리렌더링하지 않고 새로운 데이터만 추가
             setDisplayedLectures((prevDisplayed) => {
               const currentLength = prevDisplayed.length;
@@ -278,20 +256,10 @@ const SearchDialog = React.memo(
                 currentLength + PAGE_SIZE
               );
 
-              console.log(
-                `🎯 무한 스크롤 상태 - 현재: ${currentLength}개, 필터된 총: ${filteredLectures.length}개, 다음 배치: ${nextBatch.length}개`
-              );
-
               if (nextBatch.length === 0) {
-                console.log("🎯 무한 스크롤 - 더 이상 로드할 데이터 없음");
                 return prevDisplayed;
               }
 
-              console.log(
-                `🎯 무한 스크롤 - 새로운 데이터 추가: ${
-                  nextBatch.length
-                }개 (총: ${currentLength + nextBatch.length}개)`
-              );
               return [...prevDisplayed, ...nextBatch];
             });
           }

@@ -25,8 +25,6 @@ interface Props {
 
 const DraggableSchedule = React.memo(
   ({ id, data, bg, onDeleteButtonClick }: Props) => {
-    console.log(`🎯 DraggableSchedule 렌더링됨: ${id}`, performance.now());
-
     const { day, range, room, lecture } = data;
     const [isPopoverOpen, setIsPopoverOpen] = useState(false); // 🔥 최적화: 팝업 상태 관리
     const { attributes, setNodeRef, listeners, transform } = useDraggable({

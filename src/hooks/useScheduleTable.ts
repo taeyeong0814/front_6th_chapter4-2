@@ -13,10 +13,6 @@ export const useScheduleTable = (tableId: string) => {
 
   // 🔥 최적화: 해당 테이블의 schedules만 구독
   const schedules = useMemo(() => {
-    console.log(
-      `🎯 useScheduleTable - schedules 계산됨: ${tableId}`,
-      performance.now()
-    );
     return schedulesMap[tableId] || [];
   }, [schedulesMap, tableId]); // schedulesMap과 tableId를 의존성으로 설정
 

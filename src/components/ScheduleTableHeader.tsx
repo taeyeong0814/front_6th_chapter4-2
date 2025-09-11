@@ -1,4 +1,4 @@
-import React, { Fragment } from "react";
+import { Fragment, memo } from "react";
 import { Grid, GridItem, Flex, Text } from "@chakra-ui/react";
 import { CellSize, DAY_LABELS, 분 } from "../constants.ts";
 import { fill2, parseHnM } from "../utils.ts";
@@ -21,9 +21,7 @@ interface Props {
   onScheduleTimeClick?: (day: string, timeIndex: number) => void;
 }
 
-const ScheduleTableHeader = React.memo(({ onScheduleTimeClick }: Props) => {
-  console.log("🎯 ScheduleTableHeader 렌더링됨:", performance.now());
-
+const ScheduleTableHeader = memo(({ onScheduleTimeClick }: Props) => {
   const handleScheduleTimeClick = useAutoCallback(
     (day: string, timeIndex: number) => {
       onScheduleTimeClick?.(day, timeIndex);

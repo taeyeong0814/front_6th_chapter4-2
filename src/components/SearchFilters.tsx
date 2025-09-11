@@ -71,8 +71,6 @@ const QueryFilter = React.memo(
     value: string;
     onChange: (value: string) => void;
   }) => {
-    console.log("🎯 QueryFilter 렌더링됨:", performance.now());
-
     const handleChange = useAutoCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
         onChange(e.target.value);
@@ -100,8 +98,6 @@ const CreditsFilter = React.memo(
     value?: number;
     onChange: (value?: number) => void;
   }) => {
-    console.log("🎯 CreditsFilter 렌더링됨:", performance.now());
-
     const handleChange = useAutoCallback(
       (e: React.ChangeEvent<HTMLSelectElement>) => {
         onChange(e.target.value ? Number(e.target.value) : undefined);
@@ -130,8 +126,6 @@ const GradesFilter = React.memo(
     value: number[];
     onChange: (value: number[]) => void;
   }) => {
-    console.log("🎯 GradesFilter 렌더링됨:", performance.now());
-
     const handleChange = useAutoCallback((values: (string | number)[]) => {
       onChange(values.map(Number));
     });
@@ -165,8 +159,6 @@ const DaysFilter = React.memo(
     value: string[];
     onChange: (value: string[]) => void;
   }) => {
-    console.log("🎯 DaysFilter 렌더링됨:", performance.now());
-
     const handleChange = useAutoCallback((values: (string | number)[]) => {
       onChange(values as string[]);
     });
@@ -200,8 +192,6 @@ const TimesFilter = React.memo(
     value: number[];
     onChange: (value: number[]) => void;
   }) => {
-    console.log("🎯 TimesFilter 렌더링됨:", performance.now());
-
     const handleChange = useAutoCallback((values: (string | number)[]) => {
       onChange(values.map(Number));
     });
@@ -261,8 +251,6 @@ const MajorsFilter = React.memo(
     allMajors: string[];
     onChange: (value: string[]) => void;
   }) => {
-    console.log("🎯 MajorsFilter 렌더링됨:", performance.now());
-
     const handleChange = useAutoCallback((values: (string | number)[]) => {
       onChange(values as string[]);
     });
@@ -320,9 +308,6 @@ MajorsFilter.displayName = "MajorsFilter";
 
 const SearchFilters = React.memo(
   ({ searchOptions, allMajors, onChange }: Props) => {
-    console.log("🎯 SearchFilters 렌더링됨:", performance.now());
-
-    // 🔥 최적화: 개별 필드별 변경 함수들
     const handleQueryChange = useAutoCallback((value: string) => {
       onChange("query", value);
     });
