@@ -1,6 +1,6 @@
 import { Flex } from "@chakra-ui/react";
 import SearchDialog from "./SearchDialog.tsx";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 import ScheduleTableWrapper from "./components/ScheduleTableWrapper.tsx";
 import dummyScheduleMap from "./dummyScheduleMap.ts";
@@ -90,6 +90,18 @@ export const ScheduleTables = React.memo(() => {
     setSearchInfo(null);
   });
 
+  // 🔥 개별 테이블의 addSchedule 함수들을 저장하는 ref
+  const tableAddScheduleRefs = useRef<
+    Record<string, (schedules: Schedule[]) => void>
+  >({});
+
+  // 🔥 개별 테이블의 addSchedule 함수를 등록받는 함수
+  const registerTableAddSchedule = useAutoCallback(
+    (tableId: string, addScheduleFn: (schedules: Schedule[]) => void) => {
+      tableAddScheduleRefs.current[tableId] = addScheduleFn;
+    }
+  );
+
   // 🔥 최적화: SearchDialog를 통한 스케줄 추가 처리
   const handleAddSchedule = useAutoCallback(
     (tableId: string, schedules: Schedule[]) => {
@@ -97,10 +109,20 @@ export const ScheduleTables = React.memo(() => {
         `🎯 ScheduleTables - 스케줄 추가: ${tableId}`,
         performance.now()
       );
-      // Context를 통해 스케줄 추가
-      schedules.forEach((schedule) => {
-        addSchedule(tableId, schedule);
-      });
+
+      // 모든 테이블(원본/복제)은 개별 addSchedule 함수 사용
+      const addScheduleFn = tableAddScheduleRefs.current[tableId];
+      if (addScheduleFn) {
+        console.log(`🎯 테이블 - 개별 addSchedule 함수 사용: ${tableId}`);
+        addScheduleFn(schedules);
+      } else {
+        console.log(`🎯 테이블 - addSchedule 함수를 찾을 수 없음: ${tableId}`);
+        // 폴백: Context를 통해 스케줄 추가 (등록되지 않은 경우)
+        console.log(`🎯 폴백 - Context를 통해 스케줄 추가: ${tableId}`);
+        schedules.forEach((schedule) => {
+          addSchedule(tableId, schedule);
+        });
+      }
     }
   );
 
@@ -129,6 +151,7 @@ export const ScheduleTables = React.memo(() => {
             onDuplicate={duplicate}
             onRemove={remove}
             onSearchClick={handleSearchClick}
+            onRegisterAddSchedule={registerTableAddSchedule} // 🔥 addSchedule 함수 등록
             // 🔥 최적화: 복제 데이터 업데이트 함수 제거 - 독립적인 상태 관리
           />
         ))}

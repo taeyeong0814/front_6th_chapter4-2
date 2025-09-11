@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Button, ButtonGroup, Flex, Heading, Stack } from "@chakra-ui/react";
 import {
   DndContext,
@@ -63,6 +63,10 @@ interface Props {
   onDuplicate: (targetId: string, currentSchedules?: Schedule[]) => void;
   onRemove: (targetId: string) => void;
   onSearchClick: (tableId: string) => void;
+  onRegisterAddSchedule?: (
+    tableId: string,
+    addScheduleFn: (schedules: Schedule[]) => void
+  ) => void; // 🔥 addSchedule 함수 등록
 }
 
 const ScheduleTableWrapper = React.memo(
@@ -76,6 +80,7 @@ const ScheduleTableWrapper = React.memo(
     onDuplicate,
     onRemove,
     onSearchClick,
+    onRegisterAddSchedule,
   }: Props) => {
     console.log(
       `🎯 ScheduleTableWrapper 렌더링됨: ${tableId}`,
@@ -92,12 +97,13 @@ const ScheduleTableWrapper = React.memo(
     // 🔥 최적화: 모든 경우에 useIndividualScheduleTable 호출 (Hook 규칙 준수)
     const {
       schedules: hookSchedules,
+      addSchedule: hookAddSchedule,
       removeSchedule,
       handleDragEnd,
     } = useIndividualScheduleTable(tableId, initialSchedules);
 
-    // 🔥 최적화: 복제된 시간표는 렌더링 과정 없이 바로 데이터 사용
-    const schedules = isClonedTable ? initialSchedules : hookSchedules;
+    // 🔥 최적화: 복제된 시간표도 hookSchedules를 사용하여 상태 관리
+    const schedules = hookSchedules;
 
     // 🔥 최적화: 개별 시간표용 DndContext 센서 설정
     const sensors = useSensors(
@@ -150,6 +156,26 @@ const ScheduleTableWrapper = React.memo(
     const handleSearchClick = useAutoCallback(() => {
       onSearchClick(tableId);
     });
+
+    // 🔥 addSchedule 함수를 부모에게 등록 (모든 테이블)
+    useEffect(() => {
+      if (onRegisterAddSchedule) {
+        const addScheduleWrapper = (schedules: Schedule[]) => {
+          console.log(
+            `🎯 ScheduleTableWrapper - addSchedule 실행: ${tableId}`,
+            schedules.length
+          );
+          schedules.forEach((schedule) => {
+            console.log(
+              `🎯 스케줄 추가: ${schedule.lecture.title} (${schedule.day})`
+            );
+            hookAddSchedule(schedule);
+          });
+        };
+        console.log(`🎯 ScheduleTableWrapper - addSchedule 등록: ${tableId}`);
+        onRegisterAddSchedule(tableId, addScheduleWrapper);
+      }
+    }, [onRegisterAddSchedule, tableId, hookAddSchedule]);
 
     // 🔥 최적화: 복제된 시간표는 렌더링 과정 없이 바로 완성된 상태로 보여지도록
     if (isClonedTable) {
