@@ -37,9 +37,18 @@ interface SearchOption {
 
 const PAGE_SIZE = 100;
 
-const fetchMajors = () => axios.get<Lecture[]>("/schedules-majors.json");
+// 🔥 배포 환경 호환성을 위한 API 경로 설정
+const getApiPath = (filename: string) => {
+  if (process.env.NODE_ENV === "production") {
+    return `https://hanghae-plus.github.io/front_6th_chapter4-2/${filename}`;
+  }
+  return `/${filename}`;
+};
+
+const fetchMajors = () =>
+  axios.get<Lecture[]>(getApiPath("schedules-majors.json"));
 const fetchLiberalArts = () =>
-  axios.get<Lecture[]>("/schedules-liberal-arts.json");
+  axios.get<Lecture[]>(getApiPath("schedules-liberal-arts.json"));
 
 // API 캐시 시스템 구현
 const createApiCache = () => {
