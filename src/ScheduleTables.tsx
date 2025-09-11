@@ -1,14 +1,13 @@
 import { Flex } from "@chakra-ui/react";
-import { useScheduleContext } from "./hooks/useScheduleContext.ts";
 import SearchDialog from "./SearchDialog.tsx";
 import React, { useState, useMemo } from "react";
 import { useAutoCallback } from "./hooks/useAutoCallback.ts";
 import ScheduleTableWrapper from "./components/ScheduleTableWrapper.tsx";
 import dummyScheduleMap from "./dummyScheduleMap.ts";
+import { Schedule } from "./types.ts";
 
 export const ScheduleTables = React.memo(() => {
   console.log("🎯 ScheduleTables 렌더링됨:", performance.now());
-  const { setSchedulesMap } = useScheduleContext();
   const [searchInfo, setSearchInfo] = useState<{
     tableId: string;
     day?: string;
@@ -26,17 +25,42 @@ export const ScheduleTables = React.memo(() => {
     [tableIds.length]
   );
 
+  // 🔥 최적화: 복제된 테이블의 원본 ID를 추적하는 Map
+  const [cloneSourceMap, setCloneSourceMap] = useState<Record<string, string>>(
+    {}
+  );
+
+  // 🔥 최적화: 복제된 시간표의 실제 데이터를 저장하는 Map
+  const [cloneDataMap, setCloneDataMap] = useState<Record<string, Schedule[]>>(
+    {}
+  );
+
+  // 🔥 최적화: 복제된 시간표의 데이터 업데이트 함수 제거 - 독립적인 상태 관리
+
   // 🔥 최적화: useAutoCallback으로 함수 최적화
-  const duplicate = useAutoCallback((targetId: string) => {
-    const newTableId = `schedule-${Date.now()}`;
-    // 🔥 최적화: 복제 시에만 schedulesMap 업데이트 (필요한 경우에만)
-    setSchedulesMap((prev) => ({
-      ...prev,
-      [newTableId]: [...prev[targetId]],
-    }));
-    // 테이블 목록에 새 테이블 추가
-    setTableIds((prev) => [...prev, newTableId]);
-  });
+  const duplicate = useAutoCallback(
+    (targetId: string, currentSchedules?: Schedule[]) => {
+      const newTableId = `schedule-${Date.now()}`;
+      console.log(
+        `🎯 ScheduleTables - 시간표 복제: ${targetId} -> ${newTableId}`,
+        performance.now()
+      );
+
+      // 🔥 최적화: 복제 시 현재 시간표의 실제 데이터를 저장
+      if (currentSchedules) {
+        setCloneDataMap((prev) => ({
+          ...prev,
+          [newTableId]: currentSchedules, // 새 테이블의 실제 데이터 저장
+        }));
+      }
+
+      setCloneSourceMap((prev) => ({
+        ...prev,
+        [newTableId]: targetId, // 새 테이블의 원본 ID 저장
+      }));
+      setTableIds((prev) => [...prev, newTableId]);
+    }
+  );
 
   const remove = useAutoCallback((targetId: string) => {
     console.log(
@@ -73,10 +97,13 @@ export const ScheduleTables = React.memo(() => {
             tableId={tableId}
             index={index}
             disabledRemoveButton={disabledRemoveButton}
+            sourceTableId={cloneSourceMap[tableId]} // 🔥 최적화: 복제 원본 ID 전달
+            cloneData={cloneDataMap[tableId]} // 🔥 최적화: 복제된 시간표의 실제 데이터 전달
             onScheduleTimeClick={handleScheduleTimeClick}
             onDuplicate={duplicate}
             onRemove={remove}
             onSearchClick={handleSearchClick}
+            // 🔥 최적화: 복제 데이터 업데이트 함수 제거 - 독립적인 상태 관리
           />
         ))}
       </Flex>
