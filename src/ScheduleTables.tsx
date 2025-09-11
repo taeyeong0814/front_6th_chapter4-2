@@ -8,7 +8,6 @@ import { Schedule } from "./types.ts";
 import { useScheduleContext } from "./hooks/useScheduleContext.ts";
 
 export const ScheduleTables = React.memo(() => {
-  console.log("🎯 ScheduleTables 렌더링됨:", performance.now());
   const { addSchedule } = useScheduleContext(); // 🔥 최적화: Context에서 addSchedule 가져오기
   const [searchInfo, setSearchInfo] = useState<{
     tableId: string;
@@ -43,10 +42,6 @@ export const ScheduleTables = React.memo(() => {
   const duplicate = useAutoCallback(
     (targetId: string, currentSchedules?: Schedule[]) => {
       const newTableId = `schedule-${Date.now()}`;
-      console.log(
-        `🎯 ScheduleTables - 시간표 복제: ${targetId} -> ${newTableId}`,
-        performance.now()
-      );
 
       // 🔥 최적화: 복제 시 현재 시간표의 실제 데이터를 저장
       if (currentSchedules) {
@@ -65,10 +60,6 @@ export const ScheduleTables = React.memo(() => {
   );
 
   const remove = useAutoCallback((targetId: string) => {
-    console.log(
-      `🎯 ScheduleTables - 시간표 삭제: ${targetId}`,
-      performance.now()
-    );
     // 🔥 최적화: schedulesMap 업데이트 제거 - 로컬 상태만 관리
     // 테이블 목록에서 삭제된 테이블 제거
     setTableIds((prev) => prev.filter((id) => id !== targetId));
@@ -105,20 +96,12 @@ export const ScheduleTables = React.memo(() => {
   // 🔥 최적화: SearchDialog를 통한 스케줄 추가 처리
   const handleAddSchedule = useAutoCallback(
     (tableId: string, schedules: Schedule[]) => {
-      console.log(
-        `🎯 ScheduleTables - 스케줄 추가: ${tableId}`,
-        performance.now()
-      );
-
       // 모든 테이블(원본/복제)은 개별 addSchedule 함수 사용
       const addScheduleFn = tableAddScheduleRefs.current[tableId];
       if (addScheduleFn) {
-        console.log(`🎯 테이블 - 개별 addSchedule 함수 사용: ${tableId}`);
         addScheduleFn(schedules);
       } else {
-        console.log(`🎯 테이블 - addSchedule 함수를 찾을 수 없음: ${tableId}`);
         // 폴백: Context를 통해 스케줄 추가 (등록되지 않은 경우)
-        console.log(`🎯 폴백 - Context를 통해 스케줄 추가: ${tableId}`);
         schedules.forEach((schedule) => {
           addSchedule(tableId, schedule);
         });

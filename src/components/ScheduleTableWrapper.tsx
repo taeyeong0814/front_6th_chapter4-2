@@ -82,11 +82,6 @@ const ScheduleTableWrapper = React.memo(
     onSearchClick,
     onRegisterAddSchedule,
   }: Props) => {
-    console.log(
-      `🎯 ScheduleTableWrapper 렌더링됨: ${tableId}`,
-      performance.now()
-    );
-
     // 🔥 최적화: 복제된 시간표는 렌더링 과정을 스킵하고 바로 보여지도록
     const isClonedTable = sourceTableId !== undefined;
 
@@ -126,10 +121,6 @@ const ScheduleTableWrapper = React.memo(
     const handleDeleteButtonClick = useAutoCallback(
       ({ day, time }: { day: string; time: number }) => {
         // 🔥 최적화: 개별 테이블에서 직접 강의 삭제 처리
-        console.log(
-          `🎯 ScheduleTableWrapper - 강의 삭제: ${tableId}`,
-          performance.now()
-        );
         const targetIndex = schedules.findIndex(
           (schedule) => schedule.day === day && schedule.range.includes(time)
         );
@@ -141,10 +132,6 @@ const ScheduleTableWrapper = React.memo(
     );
 
     const handleDuplicate = useAutoCallback(() => {
-      console.log(
-        `🎯 ScheduleTableWrapper - 복제: ${tableId}`,
-        performance.now()
-      );
       // 🔥 최적화: 복제 시 현재 시간표의 실제 데이터를 전달
       onDuplicate(tableId, schedules);
     });
@@ -161,28 +148,16 @@ const ScheduleTableWrapper = React.memo(
     useEffect(() => {
       if (onRegisterAddSchedule) {
         const addScheduleWrapper = (schedules: Schedule[]) => {
-          console.log(
-            `🎯 ScheduleTableWrapper - addSchedule 실행: ${tableId}`,
-            schedules.length
-          );
           schedules.forEach((schedule) => {
-            console.log(
-              `🎯 스케줄 추가: ${schedule.lecture.title} (${schedule.day})`
-            );
             hookAddSchedule(schedule);
           });
         };
-        console.log(`🎯 ScheduleTableWrapper - addSchedule 등록: ${tableId}`);
         onRegisterAddSchedule(tableId, addScheduleWrapper);
       }
     }, [onRegisterAddSchedule, tableId, hookAddSchedule]);
 
     // 🔥 최적화: 복제된 시간표는 렌더링 과정 없이 바로 완성된 상태로 보여지도록
     if (isClonedTable) {
-      console.log(
-        `🎯 복제된 시간표 - 렌더링 스킵: ${tableId}`,
-        performance.now()
-      );
       return (
         <Stack key={tableId} width="600px">
           <Flex justifyContent="space-between" alignItems="center">

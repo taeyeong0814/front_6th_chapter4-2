@@ -14,10 +14,6 @@ export const useIndividualScheduleTable = (
   // 🔥 최적화: 한 번만 초기화되도록 수정 (빈 배열도 허용)
   useEffect(() => {
     if (initializedTableIdRef.current !== tableId) {
-      console.log(
-        `🎯 useIndividualScheduleTable - 초기화: ${tableId}`,
-        performance.now()
-      );
       setSchedules(initialSchedules);
       initializedTableIdRef.current = tableId;
     }
@@ -25,10 +21,6 @@ export const useIndividualScheduleTable = (
 
   const addSchedule = useCallback(
     (schedule: Schedule) => {
-      console.log(
-        `🎯 useIndividualScheduleTable - addSchedule: ${tableId}`,
-        performance.now()
-      );
       setSchedules((prev) => [...prev, schedule]);
     },
     [tableId]
@@ -36,10 +28,6 @@ export const useIndividualScheduleTable = (
 
   const removeSchedule = useCallback(
     (index: number) => {
-      console.log(
-        `🎯 useIndividualScheduleTable - removeSchedule: ${tableId}, ${index}`,
-        performance.now()
-      );
       setSchedules((prev) => prev.filter((_, i) => i !== index));
     },
     [tableId]
@@ -47,10 +35,6 @@ export const useIndividualScheduleTable = (
 
   const updateSchedule = useCallback(
     (index: number, schedule: Schedule) => {
-      console.log(
-        `🎯 useIndividualScheduleTable - updateSchedule: ${tableId}, ${index}`,
-        performance.now()
-      );
       setSchedules((prev) => prev.map((s, i) => (i === index ? schedule : s)));
     },
     [tableId]
@@ -62,11 +46,6 @@ export const useIndividualScheduleTable = (
       const { active, delta } = event;
       const { x, y } = delta;
       const [, index] = String(active.id).split(":");
-
-      console.log(
-        `🎯 useIndividualScheduleTable - 드래그&드롭: ${tableId}, ${index}`,
-        performance.now()
-      );
 
       const schedule = schedules[Number(index)];
       const nowDayIndex = DAY_LABELS.indexOf(
@@ -97,15 +76,8 @@ export const useIndividualScheduleTable = (
 
       // 실제로 변경사항이 없는 경우에만 원래 위치 유지
       if (!hasDayChanged && !hasTimeChanged) {
-        console.log(
-          `🎯 드래그&드롭 - 변경사항 없음, 원래 위치 유지: ${tableId}`
-        );
         return; // 변경사항 없음
       }
-
-      console.log(
-        `🎯 드래그&드롭 - 변경사항 적용: ${tableId}, 요일: ${hasDayChanged}, 시간: ${hasTimeChanged}`
-      );
 
       const updatedSchedule = {
         ...schedule,

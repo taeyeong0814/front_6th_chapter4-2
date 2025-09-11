@@ -24,11 +24,8 @@ const SCHEDULE_COLORS = [
 
 const ScheduleTable = React.memo(
   ({ tableId, schedules, onScheduleTimeClick, onDeleteButtonClick }: Props) => {
-    console.log("🎯 ScheduleTable 렌더링됨:", performance.now());
-
     // 🔥 최적화: getColor 함수를 useMemo로 메모이제이션
     const colorMap = useMemo(() => {
-      console.log("🎯 colorMap 계산됨:", performance.now());
       const lectures = [...new Set(schedules.map(({ lecture }) => lecture.id))];
       const map = new Map<string, string>();
 
@@ -45,16 +42,6 @@ const ScheduleTable = React.memo(
       },
       [colorMap]
     );
-
-    // 🔥 최적화: useDndContext 제거로 드래그 시 다른 테이블 리렌더링 방지
-    // const dndContext = useDndContext();
-    // const activeTableId = useMemo(() => {
-    //   const activeId = dndContext.active?.id;
-    //   if (activeId) {
-    //     return String(activeId).split(":")[0];
-    //   }
-    //   return null;
-    // }, [dndContext.active?.id]);
 
     // 🔥 최적화: 이벤트 핸들러를 useAutoCallback으로 최적화
     const handleScheduleTimeClick = useAutoCallback(

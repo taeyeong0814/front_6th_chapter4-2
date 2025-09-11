@@ -11,8 +11,6 @@ interface Props {
 
 const ScheduleItems = React.memo(
   ({ schedules, tableId, getColor, onDeleteButtonClick }: Props) => {
-    console.log(`🎯 ScheduleItems 렌더링됨: ${tableId}`, performance.now());
-
     // 🔥 최적화: 삭제 버튼 클릭 핸들러를 useCallback으로 메모이제이션
     const handleDeleteClick = useCallback(
       (day: string, time: number) => {
