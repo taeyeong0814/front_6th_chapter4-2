@@ -3,6 +3,7 @@ import React, {
   PropsWithChildren,
   useContext,
   useState,
+  useMemo,
 } from "react";
 import { Schedule } from "./types.ts";
 import dummyScheduleMap from "./dummyScheduleMap.ts";
@@ -30,8 +31,17 @@ export const ScheduleProvider = ({ children }: PropsWithChildren) => {
   const [schedulesMap, setSchedulesMap] =
     useState<Record<string, Schedule[]>>(dummyScheduleMap);
 
+  // Context value를 메모이제이션하여 불필요한 리렌더링 방지
+  const contextValue = useMemo(
+    () => ({
+      schedulesMap,
+      setSchedulesMap,
+    }),
+    [schedulesMap, setSchedulesMap]
+  );
+
   return (
-    <ScheduleContext.Provider value={{ schedulesMap, setSchedulesMap }}>
+    <ScheduleContext.Provider value={contextValue}>
       {children}
     </ScheduleContext.Provider>
   );

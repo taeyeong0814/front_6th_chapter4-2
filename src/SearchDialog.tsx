@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, memo } from "react";
+import { useEffect, useMemo, useRef, useState, memo, useCallback } from "react";
 import {
   Box,
   Button,
@@ -147,7 +147,7 @@ const getCachedLectures = createApiCache();
 const fetchAllLectures = getCachedLectures;
 
 // TODO: 이 컴포넌트에서 불필요한 연산이 발생하지 않도록 다양한 방식으로 시도해주세요.
-const SearchDialog = ({ searchInfo, onClose }: Props) => {
+const SearchDialog = memo(({ searchInfo, onClose }: Props) => {
   const { setSchedulesMap } = useScheduleContext();
 
   const loaderWrapperRef = useRef<HTMLDivElement>(null);
@@ -161,6 +161,9 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
     times: [],
     majors: [],
   });
+
+  // 검색 입력용 로컬 상태 (디바운싱용)
+  const [localQuery, setLocalQuery] = useState("");
 
   const createFilterCache = () => {
     let lastOptionsKey = "";
@@ -226,44 +229,66 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
 
   const getFilteredLecturesWithCache = createFilterCache();
 
-  const getFilteredLectures = () => {
+  const filteredLectures = useMemo(() => {
+    console.log("🔍 필터링된 강의 목록 계산");
     return getFilteredLecturesWithCache(lectures, searchOptions);
-  };
+  }, [lectures, searchOptions, getFilteredLecturesWithCache]);
 
-  const filteredLectures = getFilteredLectures();
-  const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
-  const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
+  const lastPage = useMemo(() => {
+    console.log("📄 마지막 페이지 계산");
+    return Math.ceil(filteredLectures.length / PAGE_SIZE);
+  }, [filteredLectures.length]);
+
+  const visibleLectures = useMemo(() => {
+    console.log("👁️ 보여질 강의 목록 계산", `페이지: ${page}`);
+    return filteredLectures.slice(0, page * PAGE_SIZE);
+  }, [filteredLectures, page]);
   const allMajors = useMemo(() => {
     console.log("🏫 전공 목록 계산");
     return [...new Set(lectures.map((lecture) => lecture.major))];
   }, [lectures]);
 
-  const changeSearchOption = (
-    field: keyof SearchOption,
-    value: SearchOption[typeof field]
-  ) => {
-    setPage(1);
-    setSearchOptions({ ...searchOptions, [field]: value });
-    loaderWrapperRef.current?.scrollTo(0, 0);
-  };
+  // 디바운싱된 검색어 업데이트
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log("🔍 디바운싱된 검색어 업데이트:", localQuery);
+      setSearchOptions((prev) => ({ ...prev, query: localQuery }));
+      setPage(1);
+      loaderWrapperRef.current?.scrollTo(0, 0);
+    }, 300);
 
-  const addSchedule = (lecture: Lecture) => {
-    if (!searchInfo) return;
+    return () => clearTimeout(timer);
+  }, [localQuery]);
 
-    const { tableId } = searchInfo;
+  const changeSearchOption = useCallback(
+    (field: keyof SearchOption, value: SearchOption[typeof field]) => {
+      setPage(1);
+      setSearchOptions((prev) => ({ ...prev, [field]: value }));
+      loaderWrapperRef.current?.scrollTo(0, 0);
+    },
+    []
+  );
 
-    const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
-      ...schedule,
-      lecture,
-    }));
+  const addSchedule = useCallback(
+    (lecture: Lecture) => {
+      if (!searchInfo) return;
 
-    setSchedulesMap((prev) => ({
-      ...prev,
-      [tableId]: [...prev[tableId], ...schedules],
-    }));
+      const { tableId } = searchInfo;
 
-    onClose();
-  };
+      const schedules = parseSchedule(lecture.schedule).map((schedule) => ({
+        ...schedule,
+        lecture,
+      }));
+
+      setSchedulesMap((prev) => ({
+        ...prev,
+        [tableId]: [...prev[tableId], ...schedules],
+      }));
+
+      onClose();
+    },
+    [searchInfo, setSchedulesMap, onClose]
+  );
 
   useEffect(() => {
     const start = performance.now();
@@ -299,12 +324,18 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   }, [lastPage]);
 
   useEffect(() => {
-    setSearchOptions((prev) => ({
-      ...prev,
+    // 모달이 열릴 때 모든 검색 옵션 초기화
+    setSearchOptions({
+      query: "",
+      grades: [],
       days: searchInfo?.day ? [searchInfo.day] : [],
       times: searchInfo?.time ? [searchInfo.time] : [],
-    }));
+      majors: [],
+      credits: undefined, // 학점 selectbox 초기화
+    });
     setPage(1);
+    // 검색어도 초기화
+    setLocalQuery("");
   }, [searchInfo]);
 
   return (
@@ -320,8 +351,8 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <FormLabel>검색어</FormLabel>
                 <Input
                   placeholder="과목명 또는 과목코드"
-                  value={searchOptions.query}
-                  onChange={(e) => changeSearchOption("query", e.target.value)}
+                  value={localQuery}
+                  onChange={(e) => setLocalQuery(e.target.value)}
                 />
               </FormControl>
 
@@ -517,6 +548,6 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
       </ModalContent>
     </Modal>
   );
-};
+});
 
 export default SearchDialog;
