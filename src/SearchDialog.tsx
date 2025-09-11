@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, memo } from "react";
 import {
   Box,
   Button,
@@ -81,6 +81,44 @@ const TIME_SLOTS = [
 ];
 
 const PAGE_SIZE = 100;
+
+// 강의 행 컴포넌트를 메모이제이션으로 최적화
+const LectureRow = memo(
+  ({
+    lecture,
+    index,
+    onAddSchedule,
+  }: {
+    lecture: Lecture;
+    index: number;
+    onAddSchedule: (lecture: Lecture) => void;
+  }) => {
+    console.log(`📚 강의 행 렌더링: ${lecture.title}`);
+
+    return (
+      <Tr key={`${lecture.id}-${index}`}>
+        <Td width="100px">{lecture.id}</Td>
+        <Td width="50px">{lecture.grade}</Td>
+        <Td width="200px">{lecture.title}</Td>
+        <Td width="50px">{lecture.credits}</Td>
+        <Td width="150px" dangerouslySetInnerHTML={{ __html: lecture.major }} />
+        <Td
+          width="150px"
+          dangerouslySetInnerHTML={{ __html: lecture.schedule }}
+        />
+        <Td width="80px">
+          <Button
+            size="sm"
+            colorScheme="green"
+            onClick={() => onAddSchedule(lecture)}
+          >
+            추가
+          </Button>
+        </Td>
+      </Tr>
+    );
+  }
+);
 
 const fetchMajors = () => axios.get<Lecture[]>("/schedules-majors.json");
 const fetchLiberalArts = () =>
@@ -195,7 +233,10 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
   const filteredLectures = getFilteredLectures();
   const lastPage = Math.ceil(filteredLectures.length / PAGE_SIZE);
   const visibleLectures = filteredLectures.slice(0, page * PAGE_SIZE);
-  const allMajors = [...new Set(lectures.map((lecture) => lecture.major))];
+  const allMajors = useMemo(() => {
+    console.log("🏫 전공 목록 계산");
+    return [...new Set(lectures.map((lecture) => lecture.major))];
+  }, [lectures]);
 
   const changeSearchOption = (
     field: keyof SearchOption,
@@ -459,29 +500,12 @@ const SearchDialog = ({ searchInfo, onClose }: Props) => {
                 <Table size="sm" variant="striped">
                   <Tbody>
                     {visibleLectures.map((lecture, index) => (
-                      <Tr key={`${lecture.id}-${index}`}>
-                        <Td width="100px">{lecture.id}</Td>
-                        <Td width="50px">{lecture.grade}</Td>
-                        <Td width="200px">{lecture.title}</Td>
-                        <Td width="50px">{lecture.credits}</Td>
-                        <Td
-                          width="150px"
-                          dangerouslySetInnerHTML={{ __html: lecture.major }}
-                        />
-                        <Td
-                          width="150px"
-                          dangerouslySetInnerHTML={{ __html: lecture.schedule }}
-                        />
-                        <Td width="80px">
-                          <Button
-                            size="sm"
-                            colorScheme="green"
-                            onClick={() => addSchedule(lecture)}
-                          >
-                            추가
-                          </Button>
-                        </Td>
-                      </Tr>
+                      <LectureRow
+                        key={`${lecture.id}-${index}`}
+                        lecture={lecture}
+                        index={index}
+                        onAddSchedule={addSchedule}
+                      />
                     ))}
                   </Tbody>
                 </Table>
